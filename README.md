@@ -29,6 +29,4 @@ netlify deploy --dir . --prod
 ## Contacts configurés
 - Support : 0522677766
 - Email : support@akwagroup.ma
-- Odoo : odoo.akwagroup.ma
-- Print : srv-myq-01:8090
-- Wi-Fi : r2f01m6
+
