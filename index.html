@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content" />
-  <meta name="theme-color" content="#2563EB" />
+  <meta name="theme-color" content="#0B1120" />
   <meta name="description" content="Support IT interne — Akwa Group. Résolvez vos problèmes techniques rapidement." />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -86,6 +86,7 @@
     <!-- ══ HOME VIEW ══ -->
     <div class="view active" id="view-home">
       <div class="header">
+        <canvas id="header-canvas" aria-hidden="true"></canvas>
         <div class="header-inner">
           <div class="header-top">
             <!-- To replace this logo easily, replace 'images/logo.png' in the 'images' folder -->
@@ -198,6 +199,7 @@
     <!-- ══ CHAT VIEW ══ -->
     <div class="view" id="view-chat" style="overflow:hidden">
       <div class="header">
+        <canvas id="header-canvas-chat" aria-hidden="true"></canvas>
         <div class="header-inner">
           <div class="header-top" style="margin-bottom:0">
             <button class="back-btn" onclick="showView('home')" style="margin:0;color:rgba(255,255,255,.7)">
@@ -356,6 +358,139 @@
   </div>
 
   <script src="js/app.js"></script>
+  <script>
+  /* ══ HEADER CANVAS — Animated Tech Network ══ */
+  (function() {
+    function initCanvas(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let W, H, nodes = [], animId;
+      const NODE_COUNT = 38;
+      const MAX_DIST = 110;
+
+      function resize() {
+        const parent = canvas.parentElement;
+        W = canvas.width  = parent.offsetWidth;
+        H = canvas.height = parent.offsetHeight;
+        spawnNodes();
+      }
+
+      function spawnNodes() {
+        nodes = Array.from({ length: NODE_COUNT }, () => ({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - .5) * .38,
+          vy: (Math.random() - .5) * .28,
+          r: Math.random() * 2 + 1,
+          pulse: Math.random() * Math.PI * 2,
+          pulseSpeed: .012 + Math.random() * .018
+        }));
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        nodes.forEach(n => {
+          n.x += n.vx; n.y += n.vy;
+          n.pulse += n.pulseSpeed;
+          if (n.x < 0 || n.x > W) n.vx *= -1;
+          if (n.y < 0 || n.y > H) n.vy *= -1;
+        });
+        // Draw edges
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[i].x - nodes[j].x;
+            const dy = nodes[i].y - nodes[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < MAX_DIST) {
+              const alpha = (1 - dist / MAX_DIST) * .22;
+              ctx.beginPath();
+              ctx.moveTo(nodes[i].x, nodes[i].y);
+              ctx.lineTo(nodes[j].x, nodes[j].y);
+              ctx.strokeStyle = `rgba(79,142,255,${alpha})`;
+              ctx.lineWidth = .8;
+              ctx.stroke();
+            }
+          }
+        }
+        // Draw nodes
+        nodes.forEach(n => {
+          const glow = (.5 + .5 * Math.sin(n.pulse));
+          const alpha = .25 + .35 * glow;
+          const r = n.r + glow * 1.4;
+          const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 3);
+          grad.addColorStop(0, `rgba(107,163,255,${alpha})`);
+          grad.addColorStop(1, 'rgba(79,142,255,0)');
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r * 3, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(148,190,255,${.5 + .5 * glow})`;
+          ctx.fill();
+        });
+        // Moving scan line
+        const scanY = (Date.now() * .04) % (H + 40) - 20;
+        const scanGrad = ctx.createLinearGradient(0, scanY - 30, 0, scanY + 30);
+        scanGrad.addColorStop(0,   'rgba(79,142,255,0)');
+        scanGrad.addColorStop(0.5, 'rgba(79,142,255,0.06)');
+        scanGrad.addColorStop(1,   'rgba(79,142,255,0)');
+        ctx.fillStyle = scanGrad;
+        ctx.fillRect(0, scanY - 30, W, 60);
+
+        animId = requestAnimationFrame(draw);
+      }
+
+      const ro = new ResizeObserver(resize);
+      ro.observe(canvas.parentElement);
+      resize();
+      draw();
+    }
+
+    // Reduced-motion: skip animation
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      initCanvas('header-canvas');
+      initCanvas('header-canvas-chat');
+    }
+
+    /* ══ STAGGER ENTRANCE ANIMATIONS ══ */
+    function staggerIn(selector, delay) {
+      document.querySelectorAll(selector).forEach((el, i) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(18px)';
+        el.style.transition = `opacity .45s cubic-bezier(.22,1,.36,1) ${delay + i * 70}ms, transform .45s cubic-bezier(.22,1,.36,1) ${delay + i * 70}ms`;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            el.style.opacity = '';
+            el.style.transform = '';
+          });
+        });
+      });
+    }
+
+    // Re-run stagger whenever a view becomes active
+    const origShowView = window.showView;
+    window.showView = function(name) {
+      if (origShowView) origShowView(name);
+      setTimeout(() => {
+        if (name === 'home') {
+          staggerIn('#view-home .qa-card', 80);
+          staggerIn('#view-home .pcard', 180);
+        }
+        if (name === 'chat') initCanvas('header-canvas-chat');
+        if (name === 'escalate') staggerIn('#view-escalate .contact-card', 80);
+        if (name === 'guide') staggerIn('#view-guide .scard, #view-guide .pcard', 80);
+      }, 30);
+    };
+
+    // Initial load stagger
+    window.addEventListener('load', () => {
+      staggerIn('#view-home .qa-card', 200);
+      staggerIn('#view-home .pcard', 340);
+    });
+  })();
+  </script>
 </body>
 
 </html>
